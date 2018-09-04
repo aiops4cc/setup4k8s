@@ -1,0 +1,3 @@
+#create a user kubeadmin on master server and set the default password
+kubeadmin_pwd: P@55W0rd
+kubeadmin_user: kubeadmin

@@ -1,0 +1,17 @@
+---
+# tasks file for worker---
+# tasks file for joink2sworker
+- name : Copy Join Worker Node Command to Target Nodes
+  become : yes
+  copy :
+     src: /tmp/jointk8sworkercmd
+     dest: /tmp/jointk8sworkercmd
+     mode: 0755
+
+- name : Reset Worker Nodes 
+  become : yes
+  shell : "kubeadm reset -f"
+
+- name : Join Worker Nodes to Master
+  become : yes
+  shell : /tmp/jointk8sworkercmd

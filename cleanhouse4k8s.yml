@@ -1,0 +1,7 @@
+- hosts: master:worker
+  no_log: False
+  become: yes
+  gather_facts: yes
+  serial: 25
+  roles:
+    - cleanhouse

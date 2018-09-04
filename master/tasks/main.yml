@@ -1,0 +1,52 @@
+---
+# tasks file for cfgk8scluster
+- name : Reset Kubernetes Cluster on Master Node
+  shell : "kubeadm reset -f"
+
+- name : Initial Kubernetes Cluster on Master Node
+  shell : "kubeadm --pod-network-cidr=192.168.0.0/16 init | grep 'discovery-token-ca-cert-hash'| tee >/tmp/jointk8sworkercmd "
+  register: kubeadm_result
+- debug : var=kubeadm_result.stdout
+
+- name : Create kubeadmin User on Master Node
+  user :
+     name: "{{ kubeadmin_user}}"
+     shell: /bin/bash
+     password: "{{kubeadmin_pwd}}"
+
+- name : Enable sudo without password for "{{ kubeadmin_user }}"
+  lineinfile:
+      path: /etc/sudoers
+      state: present
+      regexp: '^"{{ kubeadmin_user }}".*ALL='
+      line: '"{{ kubeadmin_user }}" ALL=(ALL) NOPASSWD: ALL'
+      validate: '/usr/sbin/visudo -cf %s'
+
+- name : Create and Configure kubeadmin user environment
+  file :
+     path: /home/{{ kubeadmin_user }}/.kube
+     state: directory
+     owner: "{{ kubeadmin_user }}"
+     group: "{{ kubeadmin_user }}"
+     mode: 0755
+
+- name : Copy kube configure file to kubeadmin home on Master Node
+  copy:
+     remote_src: yes
+     src: /etc/kubernetes/admin.conf
+     dest: /home/{{ kubeadmin_user }}/.kube/config
+     owner: "{{ kubeadmin_user }}"
+     group: "{{ kubeadmin_user }}"
+     mode: 0755
+
+- name : Install a POD network add-on
+  become: yes
+  become_user: "{{ kubeadmin_user }}"
+  shell: "kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml;kubectl apply -f https://docs.projectcalico.org/v3.1/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml"
+
+- name : Fetch Join Worker Node From Master Nodes
+  become : yes
+  fetch :
+     src: /tmp/jointk8sworkercmd
+     dest: /tmp/jointk8sworkercmd
+     flat: yes

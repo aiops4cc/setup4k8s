@@ -1,0 +1,24 @@
+[master]
+cnops-psm-master ansible_host=10.106.67.98 ansible_port=22 ansible_user=opcadmin ansible_become=true
+[worker]
+cnops-psm-node01 ansible_host=10.106.93.110 ansible_port=22 ansible_user=opcadmin 
+cnops-psm-node10 ansible_host=10.106.71.202 ansible_port=22 ansible_user=opcadmin
+
+[master:vars]
+ansible_user=opcadmin
+ansible_become=true
+
+#set an option per group and/or host, these are normally defined in inventory but can be used as normal 
+#ansible_user= the LDAP-authenticated username to ssh login into the hosts
+#ansible_user=<username>
+
+#For powerbroker-authorization, set flags to your pb profile:
+#ansible_become_method="pbrun"
+#ansible_become_user="root"
+#ansible_become_flags="cloud-cn-root"
+
+#if the host doesn't have LDAP/PB integration, you use a SSH key
+#ansible_ssh_private_key_file=~/.ssh/your-key
+[worker:vars]
+ansible_user=opcadmin
+ansible_become=true

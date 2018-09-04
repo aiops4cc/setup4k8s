@@ -1,0 +1,167 @@
+---
+# tasks file for  common
+# Function: Disable selinux, swap
+#           Enable IPv4 forward
+# Author  : Liquan Cui(Clark)
+#           cuiliquan@126.com
+- name : Disable selinux on target hosts
+  lineinfile :
+      path: /etc/selinux/config
+      backup: yes
+      regexp: '^SELINUX='
+      line: 'SELINUX=disabled'
+  when : ansible_distribution == 'RedHat' or ansible_distribution == "CentOS"
+
+- name : Enable sudo without password for opcadmin
+  lineinfile:
+      path: /etc/sudoers
+      state: present
+      regexp: '^opcadmin.*ALL='
+      line: 'opcadmin ALL=(ALL) NOPASSWD: ALL'
+      validate: '/usr/sbin/visudo -cf %s'
+
+- name : Remove swap configuration from /etc/fstab
+  lineinfile :
+       path: /etc/fstab
+       backup: yes
+       regexp: '.*swap.*'
+       state: absent 
+
+- name : Remove Old IPv4 Forward Configure on target hosts
+  lineinfile :
+       path: /etc/sysctl.conf
+       backup: yes
+       regexp: '^net.ipv4.ip_forward.*'
+       state: absent
+
+- name : Enable IPv4 Forward on target hosts
+  lineinfile :
+       path: /etc/sysctl.conf
+       backup: yes
+       line: 'net.ipv4.ip_forward = 1'
+       state: present
+
+- name : Enable IPv4 Forward on /proc/sys/net/ipv4/ip_forward
+  shell : echo '1'>/proc/sys/net/ipv4/ip_forward;sysctl -p
+
+- name : Configure bridge-nf-call-ip6tables on target hosts
+  copy :
+      src: k8s.conf
+      dest: /etc/sysctl.d/
+      mode: 0644
+      owner: root
+
+- name : Disable selinux/swapspace/sysctl on target hosts via command line
+  shell : setenforce 0;swapoff -a;sysctl --system
+# tasks file for instcfg4docker
+- name : Install Docker on CentOs 7
+  yum : name=docker state=present
+#  register:  install_result
+  when : ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7'
+#- debug :  var=install_result
+
+- name : Start Docker on CentOS 7
+  systemd: 
+    name: docker 
+    state: started
+    enabled : yes
+    masked: no
+  when : ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7'
+
+- name : Start Docker on CentOS 6
+  service: 
+    name: docker
+    state: started
+  when : ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name : Install Docker Ubuntu Version 
+  apt : 
+    pkg: docker.io
+    state: latest
+    update_cache: true
+  when: ansible_distribution == "Ubuntu"
+
+- name : Start Docker on Ubuntu
+  service: 
+    name: docker
+    state: started
+    enabled: yes
+  when : ansible_distribution == 'Ubuntu'
+
+# tasks file for setup4k8s
+- name : Configure Yum Repository for Kubnernetes on CentOS
+  copy :
+     src : kubernetes.repo
+     dest : /etc/yum.repos.d/kubernetes.repo
+     owner : root
+     group : root
+     mode : 0644
+  when : ansible_distribution == "CentOS" or ansible_distribution == "RedHat"
+
+- name : Configure Yum Repository for Kubnernetes on Ubuntu
+  copy :
+     src : kubernetes.list
+     dest : /etc/apt/sources.list.d/kubernetes.list
+     owner : root
+     group : root
+     mode : 0644
+  when : ansible_distribution == "Ubuntu"
+
+- name : Install Kubeadm, kubelet, kubectl on CentOS
+  yum: 
+     name: ['kubelet','kubeadm','kubectl','kubernetes-cni']
+     state: present
+     disable_excludes: all
+  when : ansible_distribution == "RedHat" or ansible_distribution == "CentOS"
+
+- name: Autostart kubelet at reboot
+  shell: "systemctl enable kubelet && systemctl start kubelet"
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"   
+
+- name : Start and Autostart kubernetes on CentOS at reboot
+  systemd:
+      name: kubelet
+      enabled: yes
+      state: started
+      masked: no
+  when: ansible_distribution == "CentOS" or ansible_distribution == "RedHat"   
+
+- name: Run the equivalent of "apt-get update" as a separate step
+  apt:
+    upgrade: dist
+  when : ansible_distribution == "Ubuntu"
+
+- name : Install apt-transport-https curl on Ubuntu
+  apt :
+      name: "{{ packages }}"
+      state : latest
+  vars:
+      packages:
+        - apt-transport-https
+        - curl
+  when : ansible_distribution == "Ubuntu"
+
+#- name: Add Google Cloud Apt key on Ubuntu
+#  shell : curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+#  when : ansible_distribution == "Ubuntu"
+
+- name: Add Google Cloud Apt key on Ubuntu
+  apt_key :
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+  when : ansible_distribution == "Ubuntu"
+
+- name: Install kubelet kubeadm kubectl on Ubuntu
+  apt :
+      name: "{{ packages }}"
+      state: latest
+  vars:
+      packages:
+        - kubelet
+        - kubeadm
+        - kubectl
+  when: ansible_distribution == "Ubuntu"
+
+- name: Enable AutoStart for kubelet kubeadm kubectl on Ubuntu
+  command: apt-mark hold kubelet kubeadm kubectl
+  when: ansible_distribution == "Ubuntu"
