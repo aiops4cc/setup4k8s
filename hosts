@@ -1,8 +1,8 @@
 [master]
-cnops-psm-master ansible_host=10.106.67.98 ansible_port=22 ansible_user=opcadmin ansible_become=true
+cnops-psm-master ansible_host=192.168.10.10 ansible_port=22 ansible_user=opcadmin ansible_become=true
 [worker]
-cnops-psm-node01 ansible_host=10.106.93.110 ansible_port=22 ansible_user=opcadmin 
-cnops-psm-node10 ansible_host=10.106.71.202 ansible_port=22 ansible_user=opcadmin
+cnops-psm-node01 ansible_host=192.168.10.11 ansible_port=22 ansible_user=opcadmin 
+cnops-psm-node10 ansible_host=192.168.10.12 ansible_port=22 ansible_user=opcadmin
 
 [master:vars]
 ansible_user=opcadmin
