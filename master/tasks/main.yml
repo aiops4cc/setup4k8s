@@ -8,6 +8,9 @@
   register: kubeadm_result
 - debug : var=kubeadm_result.stdout
 
+- name : "Wait for 60s after kubeadmin init"
+  pause:  seconds=60
+
 - name : Create kubeadmin User on Master Node
   user :
      name: "{{ kubeadmin_user}}"
